@@ -16,7 +16,7 @@ const SheetNinja = {
     const values = range.getValues()
     const keys = values[0]
 
-    for (let i = 0; i < values.length; i++) {
+    for (let i = 1; i < values.length; i++) {
       data.push(decoder(keys, values[i]))
     }
 
@@ -24,7 +24,12 @@ const SheetNinja = {
   },
 
   decodeRange<T>(range: Range): T[] {
-    return SheetNinja.decodeRangeWith<T>(range, SheetNinja.rawDecoder)
+    return SheetNinja.decodeRangeWith(range, SheetNinja.rawDecoder)
+  },
+
+  decodeSheet<T>(sheet: Sheet, decoder: Decoder<T> = SheetNinja.rawDecoder as Decoder<T>): T[] {
+    const range = sheet.getRange(1, 1, sheet.getLastRow(), sheet.getLastColumn())
+    return SheetNinja.decodeRangeWith(range, decoder)
   },
 
   append<T>(sheet: Sheet, keys: string[], data: T[]): void {
