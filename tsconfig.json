@@ -3,6 +3,7 @@
     "esModuleInterop": false,
     "experimentalDecorators": true,
     "isolatedModules": true,
+    "lib": ["ES2019"],
     "module": "None",
     "noImplicitUseStrict": true,
     "target": "ES2019"
