@@ -135,4 +135,15 @@ function clearContents(sheet: Sheet, startRow: number, numColumns: number): void
   range.clearContent();
 }
 
-export {};
+export {
+  decodeRange,
+  decodeRangeWith,
+  decodeSheet,
+  decodeSheetWith,
+  decodeSheetMetadata,
+  append,
+  overwrite,
+  updateOrInsertBy,
+  copySheet,
+  clearContents,
+};
