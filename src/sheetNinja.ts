@@ -11,6 +11,9 @@ function _rawDecoder<T>(keys: string[], values: any[]): T {
   }, {} as T)
 }
 
+
+// CORE FUNCTIONS
+
 function decodeRangeWith<T>(range: Range, decoder: Decoder<T>): T[] {
   const data: T[] = []
   const values = range.getValues()
@@ -135,6 +138,64 @@ function clearContents(sheet: Sheet, startRow: number, numColumns: number): void
   range.clearContent()
 }
 
+
+// O/R MAPPER FEATURES
+
+function createMapper<T, Id extends string | number>(init: MapperInit<T, Id>): Mapper<T, Id> {
+  return new Mapper(init)
+}
+
+export type MapperInit<T, Id extends string | number> = {
+  sheetId: string
+  sheetName: string
+  keys: (keyof T)[]
+  toId: (value: T) => Id
+}
+
+export class Mapper<T, Id extends string | number> {
+  private readonly init: MapperInit<T, Id>
+  private readonly sheet: Sheet
+
+  constructor(init: MapperInit<T, Id>) {
+    this.init = init
+    this.sheet = Mapper.openSheet(init.sheetId, init.sheetName)
+  }
+
+  private get keysAsString(): string[] {
+    return this.init.keys as string[]
+  }
+
+  readAll(): T[] {
+    return decodeSheet(this.sheet)
+  }
+
+  findById(id: Id): T | undefined {
+    const records = this.readAll()
+
+    return records.find(item => this.init.toId(item) === id)
+  }
+
+  upsert(data: T[]): void {
+    updateOrInsertBy(this.sheet, this.keysAsString, data, val => this.init.toId(val))
+  }
+
+  deleteBy(pred: (item?: T) => boolean): void {
+    const data = this.readAll().filter(item => !pred(item))
+    overwrite(this.sheet, this.keysAsString, data)
+  }
+
+  static openSheet(sheetId: string, sheetName: string): Sheet {
+    try {
+      const workbook = SpreadsheetApp.openById(sheetId)
+      const sheet = workbook.getSheetByName(sheetName)
+
+      return sheet
+    } catch (ex) {
+      throw ex
+    }
+  }
+}
+
 export {
   decodeRange,
   decodeRangeWith,
@@ -146,4 +207,5 @@ export {
   updateOrInsertBy,
   copySheet,
   clearContents,
+  createMapper,
 }
