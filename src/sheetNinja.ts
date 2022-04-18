@@ -1,72 +1,72 @@
-type Range = GoogleAppsScript.Spreadsheet.Range;
-type Spreadsheet = GoogleAppsScript.Spreadsheet.Spreadsheet;
-type Sheet = GoogleAppsScript.Spreadsheet.Sheet;
+type Range = GoogleAppsScript.Spreadsheet.Range
+type Spreadsheet = GoogleAppsScript.Spreadsheet.Spreadsheet
+type Sheet = GoogleAppsScript.Spreadsheet.Sheet
 
-type Decoder<T> = (keys: string[], values: any[]) => T;
+type Decoder<T> = (keys: string[], values: any[]) => T
 
 function _rawDecoder<T>(keys: string[], values: any[]): T {
   return keys.reduce((data, key, n) => {
-    data[key] = values[n];
-    return data;
-  }, {} as T);
+    data[key] = values[n]
+    return data
+  }, {} as T)
 }
 
 function decodeRangeWith<T>(range: Range, decoder: Decoder<T>): T[] {
-  const data: T[] = [];
-  const values = range.getValues();
-  const keys = values[0];
+  const data: T[] = []
+  const values = range.getValues()
+  const keys = values[0]
 
   for (let i = 1; i < values.length; i++) {
-    data.push(decoder(keys, values[i]));
+    data.push(decoder(keys, values[i]))
   }
 
-  return data;
+  return data
 }
 
 function decodeRange<T>(range: Range): T[] {
-  return decodeRangeWith(range, _rawDecoder) as T[];
+  return decodeRangeWith(range, _rawDecoder) as T[]
 }
 
 function decodeSheet<T = Record<string, any>>(sheet: Sheet): T[] {
-  return decodeSheetWith(sheet, _rawDecoder as Decoder<T>);
+  return decodeSheetWith(sheet, _rawDecoder as Decoder<T>)
 }
 
 function decodeSheetWith<T>(sheet: Sheet, decoder: Decoder<T>): T[] {
-  const range = sheet.getRange(1, 1, sheet.getLastRow(), sheet.getLastColumn());
-  return decodeRangeWith(range, decoder);
+  const range = sheet.getRange(1, 1, sheet.getLastRow(), sheet.getLastColumn())
+  return decodeRangeWith(range, decoder)
 }
 
 function decodeSheetMetadata<T>(sheet: Sheet): T {
   return sheet.getDeveloperMetadata().reduce((bag, metadata) => {
-    const key = metadata.getKey();
-    bag[key] = metadata.getValue();
-    return bag;
-  }, {} as T);
+    const key = metadata.getKey()
+    bag[key] = metadata.getValue()
+    return bag
+  }, {} as T)
 }
 
 function append<T>(sheet: Sheet, keys: string[], data: T[]): void {
-  if (!data.length) return;
+  if (!data.length) return
 
-  const start = sheet.getLastRow() + 1;
-  const range = sheet.getRange(start, 1, data.length, keys.length);
-  const values = data.map((entry) => keys.map((key) => entry[key]));
+  const start = sheet.getLastRow() + 1
+  const range = sheet.getRange(start, 1, data.length, keys.length)
+  const values = data.map(entry => keys.map(key => entry[key]))
 
-  range.setValues(values);
+  range.setValues(values)
 }
 
 function overwrite<T>(sheet: Sheet, header: string[], data: T[]) {
-  const lastRow = sheet.getLastRow();
+  const lastRow = sheet.getLastRow()
   if (lastRow > 0) {
-    sheet.insertRowsAfter(lastRow, data.length + 1);
-    sheet.deleteRows(1, lastRow);
+    sheet.insertRowsAfter(lastRow, data.length + 1)
+    sheet.deleteRows(1, lastRow)
   }
 
-  const range = sheet.getRange(1, 1, data.length + 1, header.length);
-  const values = [header];
+  const range = sheet.getRange(1, 1, data.length + 1, header.length)
+  const values = [header]
   for (const item of data) {
-    values.push(header.map((key) => item[key]));
+    values.push(header.map(key => item[key]))
   }
-  range.setValues(values);
+  range.setValues(values)
 }
 
 function updateOrInsertBy<T, Id>(
@@ -77,62 +77,62 @@ function updateOrInsertBy<T, Id>(
   duplicate: boolean = false
 ): void {
   if (!data.length) {
-    return;
+    return
   }
   const merged = data.reduce<{ seen: Set<Id>; bag: T[] }>(
     (state, item) => {
-      const key = toKey(item);
+      const key = toKey(item)
       if (!state.seen.has(key)) {
-        state.seen.add(key);
-        state.bag.push(item);
+        state.seen.add(key)
+        state.bag.push(item)
       }
-      return state;
+      return state
     },
     { seen: new Set(), bag: [] }
-  ).bag;
+  ).bag
 
-  const prevData: T[] = decodeSheet(sheet);
-  const newRecords: T[] = [];
+  const prevData: T[] = decodeSheet(sheet)
+  const newRecords: T[] = []
   for (const upd of merged) {
-    let found = false;
+    let found = false
     for (let i = 0; i < prevData.length; i++) {
-      const prev = prevData[i];
-      const currentKey = toKey(upd);
-      const oldKey = toKey(prev);
+      const prev = prevData[i]
+      const currentKey = toKey(upd)
+      const oldKey = toKey(prev)
       if (currentKey === oldKey) {
-        found = true;
-        const updated: T = Object.assign({}, prev, upd);
-        const newValues = header.map((k) => updated[k]);
-        const range = sheet.getRange(i + 2, 1, 1, header.length);
-        range.setValues([newValues]);
+        found = true
+        const updated: T = Object.assign({}, prev, upd)
+        const newValues = header.map(k => updated[k])
+        const range = sheet.getRange(i + 2, 1, 1, header.length)
+        range.setValues([newValues])
         if (!duplicate) {
-          break;
+          break
         }
       }
     }
 
     if (!found) {
-      newRecords.push(upd);
+      newRecords.push(upd)
     }
   }
 
   if (newRecords.length) {
-    append(sheet, header, newRecords);
+    append(sheet, header, newRecords)
   }
 }
 
 function copySheet(src: Sheet, dest: Spreadsheet, newName: string): Sheet {
-  const copied = src.copyTo(dest);
-  copied.setName(newName);
-  return copied;
+  const copied = src.copyTo(dest)
+  copied.setName(newName)
+  return copied
 }
 
 function clearContents(sheet: Sheet, startRow: number, numColumns: number): void {
-  const lastRow = sheet.getLastRow();
-  const numRows = lastRow - (startRow - 1);
-  if (numColumns < 1) return;
-  const range = sheet.getRange(startRow, 1, numRows, numColumns);
-  range.clearContent();
+  const lastRow = sheet.getLastRow()
+  const numRows = lastRow - (startRow - 1)
+  if (numColumns < 1) return
+  const range = sheet.getRange(startRow, 1, numRows, numColumns)
+  range.clearContent()
 }
 
 export {
@@ -146,4 +146,4 @@ export {
   updateOrInsertBy,
   copySheet,
   clearContents,
-};
+}
